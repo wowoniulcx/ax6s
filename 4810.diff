@@ -1,24 +1,23 @@
 diff --git a/package/boot/uboot-envtools/files/mediatek_mt7622 b/package/boot/uboot-envtools/files/mediatek_mt7622
-index 65ced284c350..3d327ff2a1c5 100644
+index 6e8e3b1eff5f..830414225e6e 100644
 --- a/package/boot/uboot-envtools/files/mediatek_mt7622
 +++ b/package/boot/uboot-envtools/files/mediatek_mt7622
-@@ -38,6 +38,10 @@ buffalo,wsr-2533dhp2)
+@@ -41,6 +41,9 @@ ruijie,rg-ew3200gx-pro)
  ubnt,unifi-6-lr-ubootmod)
  	ubootenv_add_uci_config "/dev/mtd2" "0x0" "0x4000" "0x10000"
  	;;
 +xiaomi,redmi-router-ax6s)
 +	ubootenv_add_uci_config "/dev/mtd3" "0x0" "0x10000" "0x40000"
-+	ubootenv_add_uci_sys_config "/dev/mtd4" "0x0" "0x10000" "0x40000"
 +	;;
  esac
  
  config_load ubootenv
 diff --git a/target/linux/mediatek/dts/mt7622-xiaomi-redmi-router-ax6s.dts b/target/linux/mediatek/dts/mt7622-xiaomi-redmi-router-ax6s.dts
 new file mode 100644
-index 000000000000..ba344132b937
+index 000000000000..933d2c9275e0
 --- /dev/null
 +++ b/target/linux/mediatek/dts/mt7622-xiaomi-redmi-router-ax6s.dts
-@@ -0,0 +1,334 @@
+@@ -0,0 +1,355 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 +/dts-v1/;
 +
@@ -33,7 +32,6 @@ index 000000000000..ba344132b937
 +	compatible = "xiaomi,redmi-router-ax6s", "mediatek,mt7622";
 +
 +	aliases {
-+		ethernet0 = &gmac0;
 +		serial0 = &uart0;
 +		led-boot = &led_power_amber;
 +		led-failsafe = &led_power_amber;
@@ -168,6 +166,10 @@ index 000000000000..ba344132b937
 +
 +		phy-connection-type = "2500base-x";
 +
++		nvmem-cells = <&macaddr_factory_4>;
++		nvmem-cell-names = "mac-address";
++		mac-address-increment = <(-1)>;
++
 +		fixed-link {
 +			speed = <2500>;
 +			full-duplex;
@@ -236,6 +238,7 @@ index 000000000000..ba344132b937
 +
 +	mediatek,bmt-v2;
 +	mediatek,bmt-table-size = <0x1000>;
++	mediatek,bmt-remap-range = <0x0 0x6c0000>;
 +
 +	partitions {
 +		compatible = "fixed-partitions";
@@ -274,31 +277,48 @@ index 000000000000..ba344132b937
 +			label = "factory";
 +			reg = <0x1c0000 0x80000>;
 +			read-only;
++
++			compatible = "nvmem-cells";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			macaddr_factory_4: macaddr@4 {
++				reg = <0x4 0x6>;
++			};
 +		};
 +
 +		partition@240000 {
 +			label = "crash";
 +			reg = <0x240000 0x40000>;
++			read-only;
 +		};
 +
 +		partition@280000 {
 +			label = "crash_log";
 +			reg = <0x280000 0x40000>;
++			read-only;
 +		};
 +
-+		/* firmware partition is the result of squashing
++		/* Shrunk and renamed from "firmware"
++		 * as to not break luci size checks
++		 */
++		partition@2c0000 {
++			label = "kernel";
++			compatible = "denx,fit";
++			reg = <0x2c0000 0x400000>;
++		};
++
++
++		/* ubi partition is the result of squashing
 +		 * consecutive stock partitions:
-+		 * - firmware
++		 * - firmware (partially)
 +		 * - firmware1
 +		 * - overlay
 +		 * - obr
-+		 * resulting ~105MiB space for packages.
 +		 */
-+
-+		partition@2c0000 {
-+			label = "firmware";
-+			compatible = "denx,fit";
-+			reg = <0x2c0000 0x7300000>;
++		partition@6c0000 {
++			label = "ubi";
++			reg = <0x6C0000 0x6f00000>;
 +		};
 +	};
 +};
@@ -369,10 +389,10 @@ index 1756ff7e3054..89c72c10a582 100644
  		   SNAND_MEMORG_2G_2K_128,
  		   &snand_cap_read_from_cache_quad_q2d,
 diff --git a/target/linux/mediatek/image/mt7622.mk b/target/linux/mediatek/image/mt7622.mk
-index 3517748510ab..2004ff746f43 100644
+index daec843b49a3..8e0126f57647 100644
 --- a/target/linux/mediatek/image/mt7622.mk
 +++ b/target/linux/mediatek/image/mt7622.mk
-@@ -240,3 +240,14 @@ define Device/ubnt_unifi-6-lr-ubootmod
+@@ -249,3 +249,23 @@ define Device/ubnt_unifi-6-lr-ubootmod
    ARTIFACT/bl31-uboot.fip := bl31-uboot ubnt_unifi-6-lr
  endef
  TARGET_DEVICES += ubnt_unifi-6-lr-ubootmod
@@ -384,7 +404,16 @@ index 3517748510ab..2004ff746f43 100644
 +  DEVICE_ALT0_MODEL := Router AX3200
 +  DEVICE_DTS := mt7622-xiaomi-redmi-router-ax6s
 +  DEVICE_DTS_DIR := ../dts
++  BOARD_NAME := xiaomi,redmi-router-ax6s
 +  DEVICE_PACKAGES := kmod-mt7915e
++  UBINIZE_OPTS := -E 5
++  IMAGES += factory.bin
++  BLOCKSIZE := 128k
++  PAGESIZE := 2048
++  KERNEL_SIZE := 4096k
++  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
++  IMAGE/factory.bin := append-kernel | pad-to $$(KERNEL_SIZE) | append-ubi
++  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
 +endef
 +TARGET_DEVICES += xiaomi_redmi-router-ax6s
 diff --git a/target/linux/mediatek/mt7622/base-files/etc/board.d/01_leds b/target/linux/mediatek/mt7622/base-files/etc/board.d/01_leds
@@ -402,10 +431,10 @@ index 65a81df8daba..5c32918d35cd 100644
  
  board_config_flush
 diff --git a/target/linux/mediatek/mt7622/base-files/etc/board.d/02_network b/target/linux/mediatek/mt7622/base-files/etc/board.d/02_network
-index 7b454314cf4a..ba3d91355e7d 100644
+index 4649d0dc5736..c55fcbee2eb5 100644
 --- a/target/linux/mediatek/mt7622/base-files/etc/board.d/02_network
 +++ b/target/linux/mediatek/mt7622/base-files/etc/board.d/02_network
-@@ -23,6 +23,9 @@ mediatek_setup_interfaces()
+@@ -24,6 +24,9 @@ mediatek_setup_interfaces()
  	ubnt,unifi-6-lr-ubootmod)
  		ucidef_set_interface_lan "eth0"
  		;;
@@ -415,32 +444,50 @@ index 7b454314cf4a..ba3d91355e7d 100644
  	*)
  		ucidef_add_switch "switch0" \
  				  "0:lan" "1:lan" "2:lan" "3:lan" "4:wan" "6u@eth0" "5u@eth1"
-@@ -30,9 +33,28 @@ mediatek_setup_interfaces()
- 	esac
- }
- 
-+mediatek_setup_macs()
-+{
-+	local board="$1"
-+	local lan_mac=""
+@@ -35,14 +38,22 @@ mediatek_setup_macs()
+ {
+ 	local board="$1"
+ 	local lan_mac=""
 +	local wan_mac=""
 +	local label_mac=""
-+
-+	case $board in
+ 
+ 	case $board in
+ 	ruijie,rg-ew3200gx-pro)
+ 		lan_mac=$(macaddr_add $(get_mac_label) 1)
+ 		;;
 +	xiaomi,redmi-router-ax6s)
-+		wan_mac=$(mtd_get_mac_ascii u-boot-env ethaddr_wan)
++		wan_mac=$(mtd_get_mac_ascii bdata ethaddr_wan)
 +		label_mac=$wan_mac
 +		;;
-+	esac
-+
+ 	esac
+ 
+ 	[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan" $lan_mac
 +	[ -n "$wan_mac" ] && ucidef_set_interface_macaddr "wan" $wan_mac
 +	[ -n "$label_mac" ] && ucidef_set_label_macaddr $label_mac
-+}
-+
- board_config_update
- board=$(board_name)
- mediatek_setup_interfaces $board
-+mediatek_setup_macs $board
- board_config_flush
+ }
  
- exit 0
+ board_config_update
+diff --git a/target/linux/mediatek/mt7622/base-files/lib/upgrade/platform.sh b/target/linux/mediatek/mt7622/base-files/lib/upgrade/platform.sh
+index fbca6ef0f7dd..f54665dfa15b 100755
+--- a/target/linux/mediatek/mt7622/base-files/lib/upgrade/platform.sh
++++ b/target/linux/mediatek/mt7622/base-files/lib/upgrade/platform.sh
+@@ -45,7 +45,8 @@ platform_do_upgrade() {
+ 		default_do_upgrade "$1"
+ 		;;
+ 	mediatek,mt7622-rfb1-ubi|\
+-	totolink,a8000ru)
++	totolink,a8000ru|\
++	xiaomi,redmi-router-ax6s)
+ 		nand_do_upgrade "$1"
+ 		;;
+ 	*)
+@@ -67,7 +68,8 @@ platform_check_image() {
+ 		buffalo_check_image "$board" "$magic" "$1" || return 1
+ 		;;
+ 	mediatek,mt7622-rfb1-ubi|\
+-	totolink,a8000ru)
++	totolink,a8000ru|\
++	xiaomi,redmi-router-ax6s)
+ 		nand_do_platform_check "$board" "$1"
+ 		;;
+ 	*)
