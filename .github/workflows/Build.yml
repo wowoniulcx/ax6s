@@ -23,11 +23,11 @@ jobs:
         curl -s https://build-scripts.immortalwrt.eu.org/init_build_environment.sh | sudo bash
         sudo timedatectl set-timezone "$TZ"
 
-    - name: make
+    - name: Prepare
       run: |
         git clone -b master --single-branch --depth=1 https://github.com/immortalwrt/immortalwrt
-        cp 4810.diff ./immortalwrt/4810.diff
         cd immortalwrt/
+        wget https://patch-diff.githubusercontent.com/raw/openwrt/openwrt/pull/4810.diff
         git apply 4810.diff
         ./scripts/feeds update -a
         ./scripts/feeds install -a
