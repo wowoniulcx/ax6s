@@ -1,6 +1,11 @@
 name: Build 237Immortalwrt master
 
 on:
+  push:
+    branches: 
+      - main
+    paths:
+      - '237.config'
   workflow_dispatch:
 
 env:
