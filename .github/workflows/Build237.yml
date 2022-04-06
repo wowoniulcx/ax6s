@@ -35,8 +35,8 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
         cp ../237.config ./.config
-        cp ../kernel_modules add kmod-inet-diag package.diff ./kernel_modules add kmod-inet-diag package.diff
-        git apply kernel_modules add kmod-inet-diag package.diff
+        cp ../kmod-inet-diag.diff ./kmod-inet-diag.diff
+        git apply kmod-inet-diag.diff
 
     - name: Compile the firmware
       id: compile
