@@ -36,6 +36,8 @@ jobs:
         ./scripts/feeds install -a
         cp ../328-mac80211-do-not-wake-queues-on-a-vif-that-is-being-s.patch ./package/kernel/mac80211/patches/subsys/328-mac80211-do-not-wake-queues-on-a-vif-that-is-being-s.patch
         cp ../237.config ./.config
+        cp ../kernel_modules add kmod-inet-diag package.diff ./kernel_modules add kmod-inet-diag package.diff
+        git apply kernel_modules add kmod-inet-diag package.diff
 
     - name: Compile the firmware
       id: compile

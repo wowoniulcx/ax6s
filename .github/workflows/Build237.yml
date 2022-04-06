@@ -1,4 +1,4 @@
-name: Build 237Immortalwrt master
+name: Build 237Immortalwrt
 
 on:
   push:
@@ -35,6 +35,8 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
         cp ../237.config ./.config
+        cp ../kernel_modules add kmod-inet-diag package.diff ./kernel_modules add kmod-inet-diag package.diff
+        git apply kernel_modules add kmod-inet-diag package.diff
 
     - name: Compile the firmware
       id: compile
