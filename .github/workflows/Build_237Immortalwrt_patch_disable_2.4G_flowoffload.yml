@@ -34,7 +34,7 @@ jobs:
         cd immortalwrt/
         ./scripts/feeds update -a
         ./scripts/feeds install -a
-        cp ../650-netfilter-add-xt_FLOWOFFLOAD-target.patch ./target/linux/generic/hack-5.10/650-netfilter-add-xt_FLOWOFFLOAD-target.patch
+        cp -f ../650-netfilter-add-xt_FLOWOFFLOAD-target.patch ./target/linux/generic/hack-5.10/650-netfilter-add-xt_FLOWOFFLOAD-target.patch
         cp ../237.config ./.config
         cp ../kmod-inet-diag.diff ./kmod-inet-diag.diff
         git apply kmod-inet-diag.diff
