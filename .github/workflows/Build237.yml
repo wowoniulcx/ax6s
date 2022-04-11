@@ -35,8 +35,6 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
         cp ../237.config ./.config
-        cp ../kmod-inet-diag.diff ./kmod-inet-diag.diff
-        git apply kmod-inet-diag.diff
 
     - name: Compile the firmware
       id: compile
