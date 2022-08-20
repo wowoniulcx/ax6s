@@ -5,7 +5,7 @@ on:
     branches: 
       - main
     paths:
-      - 'con1.config'
+      - 'con2.config'
   workflow_dispatch:
     inputs:
       ssh:
@@ -38,7 +38,7 @@ jobs:
         cd immortalwrt/
         ./scripts/feeds update -a
         ./scripts/feeds install -a
-        cp ../con1.config ./.config
+        cp ../con2.config ./.config
     - name: SSH connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0
       if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
